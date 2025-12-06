@@ -1,12 +1,8 @@
 # Dwello PDF Form Filler - Take Home Assignment
 
-**Time Limit**: 4-6 hours | **Due**: Monday EOD
 
 ---
 
-## Task
-
-Write a Python script that fills the California Request for Repair PDF form (`resources/request_for_repair.pdf`) with data from a JSON file.
 
 **Command**:
 ```bash
