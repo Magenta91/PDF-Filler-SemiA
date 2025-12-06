@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive PDF Form Filler</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        header { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; margin-bottom: 10px; }
+        .subtitle { color: #666; font-size: 14px; }
+        .main-content { display: grid; grid-template-columns: 350px 1fr; gap: 20px; }
+        .sidebar { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: fit-content; }
+        .pdf-viewer { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); min-height: 600px; overflow: auto; }
+        .upload-area { border: 2px dashed #ccc; border-radius: 8px; padding: 40px; text-align: center; cursor: pointer; }
+        .upload-area:hover { border-color: #4CAF50; background: #f9f9f9; }
+        .upload-area.dragover { border-color: #4CAF50; background: #e8f5e9; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #555; font-weight: 500; font-size: 14px; }
+        input[type="text"], input[type="date"], textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        textarea { resize: vertical; min-height: 80px; }
+        button { background: #4CAF50; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; width: 100%; margin-top: 10px; }
+        button:hover { background: #45a049; }
+        .pdf-page { position: relative; margin-bottom: 20px; border: 1px solid #ddd; display: inline-block; }
+        .pdf-page.drag-over { box-shadow: 0 0 20px rgba(76, 175, 80, 0.5); border-color: #4CAF50; }
+        .pdf-page img { display: block; max-width: 100%; height: auto; }
+        
+        .field-overlay {
+            position: absolute;
+            background: rgba(255,255,255,0.95);
+            border: 1px dashed #666;
+            padding: 2px 4px;
+            cursor: move;
+            user-select: none;
+            min-width: 30px;
+            font-family: Arial, sans-serif;
+        }
+        .field-overlay:hover { background: rgba(255, 255, 0, 0.3); border: 1px solid #333; z-index: 100; }
+        .field-overlay.selected { border: 2px solid #2196F3; background: rgba(33, 150, 243, 0.15); z-index: 101; }
+        .field-overlay.locked { cursor: default; border-style: solid; }
+        
+        .field-text { color: #000; white-space: nowrap; }
+        .field-label { font-size: 8px; color: #888; display: block; margin-bottom: 1px; }
+        
+        .delete-btn {
+            position: absolute; top: -8px; right: -8px;
+            background: #f44336; color: white; border: none; border-radius: 50%;
+            width: 18px; height: 18px; font-size: 12px; cursor: pointer;
+            display: none; padding: 0; line-height: 16px;
+        }
+        .field-overlay:hover .delete-btn, .field-overlay.selected .delete-btn { display: block; }
+        
+        .field-controls {
+            display: none; position: absolute; bottom: -22px; left: 0;
+            background: white; border: 1px solid #ddd; border-radius: 3px; padding: 2px;
+        }
+        .field-overlay:hover .field-controls, .field-overlay.selected .field-controls { display: flex; gap: 2px; }
+        .field-controls button {
+            width: 22px; height: 20px; padding: 0; margin: 0; font-size: 10px;
+            background: #eee; color: #333; border: 1px solid #ccc;
+        }
+        .field-controls button:hover { background: #ddd; }
+        .field-controls button.active { background: #4CAF50; color: white; }
+        
+        .status { padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 14px; }
+        .status.success { background: #e8f5e9; color: #2e7d32; }
+        .status.error { background: #ffebee; color: #c62828; }
+        .status.info { background: #e3f2fd; color: #1565c0; }
+        .status.hidden { display: none; }
+        .hidden { display: none; }
+        .toolbar { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .toolbar button { flex: 1; min-width: 80px; margin: 0; font-size: 12px; padding: 10px; }
+        .toolbar button.locked { background: #ff9800; }
+        .instructions { background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 15px; margin-bottom: 15px; font-size: 13px; }
+        .instructions h3 { margin-bottom: 10px; color: #856404; }
+        .instructions ul { margin-left: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 Interactive PDF Form Filler</h1>
+            <p class="subtitle">Upload PDF, position fields, and download filled form</p>
+        </header>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <div id="upload-section">
+                    <h3>1. Upload PDF</h3>
+                    <div class="upload-area" id="upload-area">
+                        <p>📄 Drop PDF here or click</p>
+                        <input type="file" id="pdf-input" accept=".pdf" style="display: none;">
+                    </div>
+                </div>
+
+                <div id="form-section" class="hidden">
+                    <h3>2. Enter Form Data</h3>
+                    <div id="status" class="status hidden"></div>
+                    
+                    <div class="form-group">
+                        <label>Date Prepared</label>
+                        <input type="date" id="date_prepared" value="2025-12-06">
+                    </div>
+                    <div class="form-group">
+                        <label>Agreement Date</label>
+                        <input type="date" id="agreement_date" value="2025-11-15">
+                    </div>
+                    <div class="form-group">
+                        <label>Property Address</label>
+                        <input type="text" id="property_address" value="123 Main Street, Los Angeles, CA 90001">
+                    </div>
+                    <div class="form-group">
+                        <label>Buyer Name</label>
+                        <input type="text" id="buyer_name" value="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label>Seller Name</label>
+                        <input type="text" id="seller_name" value="Jane Smith">
+                    </div>
+                    <div class="form-group">
+                        <label>Repairs (one per line)</label>
+                        <textarea id="repairs">Replace broken window
+Fix leaking faucet
+Repair garage door</textarea>
+                    </div>
+                    <button id="process-btn">3. Place Fields on PDF</button>
+                </div>
+
+                <div id="edit-section" class="hidden">
+                    <div class="instructions">
+                        <h3>📝 Edit Fields</h3>
+                        <ul>
+                            <li><b>Drag</b> to move fields</li>
+                            <li><b>A+/A-</b> to change font size</li>
+                            <li><b>B</b> to toggle bold</li>
+                            <li><b>×</b> to delete field</li>
+                        </ul>
+                    </div>
+                    <div class="toolbar">
+                        <button id="add-field-btn">➕ Add</button>
+                        <button id="lock-btn">🔒 Lock</button>
+                        <button id="reset-btn">🔄 Reset</button>
+                    </div>
+                    <button id="generate-btn">4. Generate PDF</button>
+                </div>
+            </div>
+
+            <div class="pdf-viewer">
+                <div id="pdf-container">
+                    <p style="text-align: center; color: #999; padding: 100px 0;">Upload a PDF to get started</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="/static/app.js"></script>
+</body>
+</html>

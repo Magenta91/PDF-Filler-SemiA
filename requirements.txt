@@ -1,0 +1,12 @@
+# Core PDF libraries (choose what works for you)
+PyPDF2>=3.0.0
+pypdf>=3.17.0
+reportlab>=4.0.0
+
+# Optional: for more advanced PDF handling
+pdfrw>=0.4
+
+# Optional: for OCR (bonus feature)
+# pytesseract>=0.3.10
+# pdf2image>=1.16.3
+# Pillow>=10.0.0

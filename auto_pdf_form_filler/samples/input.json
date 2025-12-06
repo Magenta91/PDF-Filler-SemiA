@@ -1,0 +1,12 @@
+{
+  "date_prepared": "2025-12-06",
+  "agreement_date": "2025-11-15",
+  "property_address": "123 Main Street, Los Angeles, CA 90001",
+  "buyer_name": "John Doe",
+  "seller_name": "Jane Smith",
+  "repairs": [
+    "Replace broken window in master bedroom",
+    "Fix leaking kitchen faucet",
+    "Repair garage door opener"
+  ]
+}
